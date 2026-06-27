@@ -1,4 +1,4 @@
-# Smart Desk: IoT-Based Personalized Comfort Monitoring System 🖥️
+# Smart Desk: IoT-Based Personalized Comfort Monitoring System 
 
 Spring Boot 4 (Java 21) + Thymeleaf + MySQL ile hazırlanmış IoT dashboard projesi.
 
