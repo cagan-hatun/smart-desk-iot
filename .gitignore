@@ -1,0 +1,16 @@
+# Maven build (compiled files)
+target/
+
+# Gizli bilgiler
+.env
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.github/modernize/
+
+# OS
+.DS_Store
+Thumbs.db

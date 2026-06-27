@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akıllı Çalışma Masası</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:        #0f1117;
+            --surface:   #1a1d2e;
+            --surface-2: #222538;
+            --border:    #2e3148;
+            --accent:    #F59E0B;
+            --accent-s:  rgba(245,158,11,0.12);
+            --text:      #f4ede4;
+            --muted:     #9ba3b0;
+            --good:      #10B981;
+            --warn:      #F59E0B;
+            --bad:       #EF4444;
+            --sidebar-w: 200px;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            width: 100%;
+            overflow-x: hidden;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* ── LAYOUT ─────────────────────────────── */
+        .layout {
+            display: flex;
+            width: 100%;
+            max-width: 100vw;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── SIDEBAR ────────────────────────────── */
+        .sidebar {
+            width: var(--sidebar-w);
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-brand {
+            padding: 18px 16px 14px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .brand-eyebrow {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px; letter-spacing: 0.16em;
+            color: var(--accent); text-transform: uppercase; margin-bottom: 4px;
+        }
+
+        .brand-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px; font-weight: 600; line-height: 1.35;
+        }
+
+        .sidebar-nav {
+            flex: 1; padding: 12px 8px;
+            display: flex; flex-direction: column; gap: 2px;
+            overflow: hidden;
+        }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 9px;
+            padding: 9px 10px; border-radius: 9px;
+            color: var(--muted); font-size: 12px; font-weight: 500;
+            text-decoration: none; transition: all 0.18s;
+        }
+        .nav-item:hover { background: var(--accent-s); color: var(--accent); }
+        .nav-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+
+        .sidebar-footer {
+            padding: 12px 16px; border-top: 1px solid var(--border);
+            display: flex; align-items: center; gap: 9px; flex-shrink: 0;
+        }
+        .user-avatar {
+            width: 28px; height: 28px; border-radius: 50%;
+            background: var(--surface-2); border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; flex-shrink: 0;
+        }
+        .user-label { font-size: 12px; font-weight: 500; color: var(--muted); }
+
+        /* ── MAIN ───────────────────────────────── */
+        .main {
+            flex: 1; min-width: 0; max-width: calc(100vw - var(--sidebar-w));
+            display: flex; flex-direction: column;
+            padding: 10px 14px; gap: 8px;
+            transition: opacity 0.3s;
+        }
+        .main.session-paused { opacity: 0.5; }
+
+        /* ── TOP BAR ────────────────────────────── */
+        .main-header {
+            flex: none;
+            display: flex; justify-content: flex-end; align-items: center; gap: 12px;
+        }
+
+        .update-time {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px; color: var(--muted);
+        }
+
+        .status-pill {
+            display: flex; align-items: center; gap: 7px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 999px; padding: 5px 12px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px; color: var(--muted);
+        }
+
+        .dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--good); box-shadow: 0 0 5px var(--good);
+            transition: background 0.3s, box-shadow 0.3s; flex-shrink: 0;
+        }
+        .dot.offline { background: var(--bad); box-shadow: 0 0 5px var(--bad); }
+
+        .demo-toggle {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px; font-weight: 600;
+            background: var(--surface); border: 1px solid var(--border);
+            color: var(--muted); border-radius: 999px; padding: 5px 12px;
+            cursor: pointer; transition: all 0.18s;
+        }
+        .demo-toggle:hover { border-color: var(--accent); color: var(--accent); }
+        .demo-toggle.active { background: var(--accent-s); border-color: var(--accent); color: var(--accent); }
+
+        /* ── DEMO PANEL ─────────────────────────── */
+        .demo-panel { display: none; margin-bottom: 8px; }
+        .demo-panel.visible { display: block; }
+        .demo-panel-inner {
+            display: flex; gap: 18px;
+            background: var(--surface); border: 1px solid var(--accent);
+            border-radius: 14px; padding: 12px 16px;
+        }
+        .demo-slider { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .demo-slider label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px; color: var(--muted);
+            display: flex; justify-content: space-between;
+        }
+        .demo-slider label span { color: var(--accent); font-weight: 600; }
+        .demo-slider input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+        /* ── CARDS ──────────────────────────────── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px; padding: 14px;
+            overflow: hidden;
+        }
+        .card-label {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px; font-weight: 600;
+            letter-spacing: 0.06em; color: var(--muted);
+            text-transform: uppercase; margin-bottom: 12px;
+        }
+
+        /* ── TOP ROW (konfor + öneriler) ─────────── */
+        #genel-bakis { }
+
+        .top-row {
+            display: grid;
+            grid-template-columns: 58% 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .top-row .card { display: flex; flex-direction: column; }
+
+        /* Konfor card gradient */
+        .konfor-card {
+            background: radial-gradient(circle at 30% 0%, rgba(245,158,11,0.07), transparent 55%), var(--surface);
+        }
+
+        .konfor-inner {
+            flex: 1;
+            display: flex; gap: 16px; align-items: flex-start;
+        }
+
+        .gauge-side {
+            flex: 0 0 40%;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        .gauge-wrap { position: relative; width: 100%; max-width: 180px; }
+        .gauge { width: 100%; display: block; }
+        .gauge-track { fill: none; stroke: var(--surface-2); stroke-width: 13; stroke-linecap: round; }
+        .gauge-fill {
+            fill: none; stroke: var(--accent); stroke-width: 13; stroke-linecap: round;
+            stroke-dasharray: 282.74; stroke-dashoffset: 282.74;
+            filter: drop-shadow(0 0 5px currentColor);
+            transition: stroke-dashoffset 0.6s ease, stroke 0.6s ease;
+        }
+        .gauge-value {
+            position: absolute; bottom: 4px; left: 0; right: 0;
+            display: flex; align-items: baseline; justify-content: center; gap: 2px;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+        #scoreValue { font-size: 34px; font-weight: 600; }
+        .gauge-unit { font-size: 11px; color: var(--muted); }
+
+        .gauge-status {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px; font-weight: 600;
+            margin-top: 6px; text-align: center; color: var(--muted);
+        }
+
+        .session-total {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px; color: var(--muted);
+            margin-top: 8px; text-align: center;
+        }
+
+        .feedback-row {
+            display: flex; gap: 5px; margin-top: 10px; width: 100%;
+        }
+        .feedback-btn {
+            flex: 1; padding: 7px 4px; border-radius: 8px;
+            border: 1px solid var(--border); background: var(--surface-2);
+            color: var(--text); font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px; font-weight: 600; cursor: pointer;
+            transition: all 0.18s; white-space: nowrap;
+        }
+        .feedback-btn:hover       { border-color: var(--accent); background: var(--accent-s); }
+        .feedback-btn.positive    { color: var(--good); border-color: rgba(16,185,129,0.3); }
+        .feedback-btn.positive:hover { background: rgba(16,185,129,0.1); border-color: var(--good); }
+        .feedback-btn.neutral     { color: var(--muted); }
+        .feedback-btn.negative    { color: var(--bad); border-color: rgba(239,68,68,0.3); }
+        .feedback-btn.negative:hover { background: rgba(239,68,68,0.1); border-color: var(--bad); }
+
+        /* Breakdown */
+        .breakdown-side {
+            flex: 1; min-width: 0;
+            border-left: 1px solid var(--border); padding-left: 14px;
+        }
+        .breakdown-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px; letter-spacing: 0.14em;
+            color: var(--muted); text-transform: uppercase; margin-bottom: 8px;
+        }
+        .breakdown-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 5px 0; border-bottom: 1px solid rgba(46,49,72,0.6);
+        }
+        .breakdown-item:last-child { border-bottom: none; }
+        .bi-icon  { font-size: 13px; width: 18px; text-align: center; flex-shrink: 0; }
+        .bi-name  { flex: 1; font-size: 12px; color: var(--text); }
+        .bi-points {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px; font-weight: 600; min-width: 32px; text-align: right;
+        }
+        .bi-points.ideal  { color: var(--good); }
+        .bi-points.orta   { color: var(--warn); }
+        .bi-points.dikkat { color: var(--bad);  }
+
+        /* ── SMART TIPS ─────────────────────────── */
+        #oneriler .card-label { margin-bottom: 8px; }
+        #tipsList { display: flex; flex-direction: column; gap: 0; overflow: hidden; }
+
+        .tip-item {
+            display: flex; align-items: flex-start; gap: 8px;
+            padding: 7px 0; border-bottom: 1px solid rgba(46,49,72,0.6);
+        }
+        .tip-item:last-child { border-bottom: none; }
+        .tip-icon { flex-shrink: 0; margin-top: 1px; }
+        .tip-level {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 8px; font-weight: 700; letter-spacing: 0.08em;
+            padding: 2px 6px; border-radius: 4px;
+            white-space: nowrap; flex-shrink: 0; margin-top: 2px;
+        }
+        .level-ideal  { background: rgba(16,185,129,0.12); color: var(--good); }
+        .level-orta   { background: rgba(245,158,11,0.12);  color: var(--warn); }
+        .level-dikkat { background: rgba(239,68,68,0.12);   color: var(--bad);  }
+        .tip-text { font-size: 11px; line-height: 1.45; color: var(--text); }
+
+        /* ── SENSOR GRID ────────────────────────── */
+        #sensorler { margin-bottom: 8px; }
+
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        /* New metric card hierarchy */
+        .metric-card {
+            display: flex; flex-direction: column;
+            justify-content: space-between;
+            gap: 4px;
+        }
+
+        .metric-head {
+            display: flex; align-items: center; gap: 7px;
+        }
+        .metric-icon {
+            flex-shrink: 0; color: var(--muted);
+            transition: color 0.3s;
+        }
+        .metric-label {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px; font-weight: 600; color: var(--muted);
+        }
+
+        /* BIG status — most prominent */
+        .metric-status-big {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(1.4rem, 2.2vw, 2rem);
+            font-weight: 700; letter-spacing: 0.02em; line-height: 1;
+            color: var(--muted); transition: color 0.3s;
+        }
+
+        .metric-value-wrap {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: clamp(0.95rem, 1.3vw, 1.2rem);
+            font-weight: 500; color: var(--text);
+        }
+        .metric-unit { font-size: 0.75em; color: var(--muted); margin-left: 3px; }
+
+        .metric-tip {
+            font-size: 10px; color: var(--muted);
+            line-height: 1.4; font-style: italic;
+            border-top: 1px solid rgba(46,49,72,0.5);
+            padding-top: 5px; margin-top: 2px;
+        }
+
+        /* ── BOTTOM ROW ─────────────────────────── */
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 19% 1fr;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .bottom-row .card { display: flex; flex-direction: column; overflow: hidden; }
+
+        /* Sensor status */
+        .sensor-status-list { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+        .sensor-status-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 0; border-bottom: 1px solid rgba(46,49,72,0.6);
+            flex: 1; align-items: center;
+        }
+        .sensor-status-item:last-child { border-bottom: none; }
+        .sensor-name { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500; }
+        .sensor-indicator { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 500; }
+        .sensor-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .sensor-dot.active  { background: var(--good); box-shadow: 0 0 4px var(--good); }
+        .sensor-dot.passive { background: var(--bad);  box-shadow: 0 0 4px var(--bad);  }
+        .sensor-label-active  { color: var(--good); }
+        .sensor-label-passive { color: var(--bad);  }
+
+        /* Chart */
+        .chart-card-inner { display: flex; flex-direction: column; flex: 1; }
+        .chart-head {
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 8px; margin-bottom: 10px; flex-shrink: 0;
+        }
+        .chart-head .card-label { margin-bottom: 0; }
+        .chart-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+        .chart-tabs button {
+            font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+            background: var(--surface-2); color: var(--muted);
+            border: 1px solid var(--border); border-radius: 6px;
+            padding: 4px 9px; cursor: pointer; transition: all 0.18s;
+        }
+        .chart-tabs button.active { background: var(--accent-s); border-color: var(--accent); color: var(--accent); }
+        .chart-tabs button:hover  { border-color: var(--accent); }
+        .chart-canvas-wrap { position: relative; height: 260px; min-height: 260px; }
+        #historyChart { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+
+        /* ── MODAL ──────────────────────────────── */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            display: flex; align-items: flex-end; justify-content: center;
+            padding-bottom: 60px; z-index: 1000;
+            opacity: 0; pointer-events: none; transition: opacity 0.25s;
+        }
+        .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+        .modal-box {
+            background: var(--surface); border: 1px solid var(--accent);
+            border-radius: 16px; padding: 20px 24px; width: 100%; max-width: 360px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.55);
+            position: relative; transform: translateY(14px); transition: transform 0.25s;
+        }
+        .modal-overlay.visible .modal-box { transform: translateY(0); }
+        .modal-close {
+            position: absolute; top: 11px; right: 13px;
+            background: none; border: none; color: var(--muted);
+            font-size: 14px; cursor: pointer; padding: 2px 5px;
+            border-radius: 4px; transition: all 0.18s; line-height: 1;
+        }
+        .modal-close:hover { color: var(--text); background: var(--surface-2); }
+        .modal-question {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px; font-weight: 600;
+            margin-bottom: 12px; padding-right: 18px;
+        }
+        .modal-actions { display: flex; gap: 7px; }
+        .modal-actions .feedback-btn { flex: 1; }
+
+        /* ── TOAST ──────────────────────────────── */
+        .toast {
+            position: fixed; bottom: 20px; left: 50%;
+            transform: translateX(-50%) translateY(12px);
+            background: var(--surface); border: 1px solid var(--accent);
+            color: var(--accent); font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px; padding: 8px 18px; border-radius: 999px;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s, transform 0.25s;
+            white-space: nowrap; z-index: 999;
+        }
+        .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+<div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <p class="brand-eyebrow">IoT Projesi</p>
+            <p class="brand-title">Akıllı Çalışma Masası</p>
+        </div>
+        <nav class="sidebar-nav">
+            <a class="nav-item" href="#genel-bakis"><span class="nav-icon">⊞</span> Genel Bakış</a>
+            <a class="nav-item" href="#sensorler"><span class="nav-icon">◉</span> Sensörler</a>
+            <a class="nav-item" href="#gecmis"><span class="nav-icon">↗</span> Geçmiş</a>
+            <a class="nav-item" href="#oneriler"><span class="nav-icon">◆</span> Öneriler</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-avatar">&#128100;</div>
+            <span class="user-label">Kullanıcı</span>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main" id="mainContent">
+
+        <!-- Top bar -->
+        <div class="main-header">
+            <span class="update-time" id="updateTimeDisplay">Son güncelleme: --:--:--</span>
+            <div class="status-pill">
+                <span class="dot" id="connectionDot"></span>
+                <span id="connectionText">Bağlanıyor...</span>
+            </div>
+            <button class="demo-toggle" id="demoToggleBtn" onclick="toggleDemoMode()">&#127918; Demo Modu</button>
+        </div>
+
+        <!-- Demo Modu Slider Paneli -->
+        <div class="demo-panel" id="demoPanel">
+            <div class="demo-panel-inner">
+                <div class="demo-slider">
+                    <label>Sıcaklık <span id="demoTempVal">24.0</span>&#176;C</label>
+                    <input type="range" id="demoTemp" min="15" max="35" step="0.5" value="24">
+                </div>
+                <div class="demo-slider">
+                    <label>Işık <span id="demoLightVal">1500</span></label>
+                    <input type="range" id="demoLight" min="0" max="4095" step="1" value="1500">
+                </div>
+                <div class="demo-slider">
+                    <label>Gürültü <span id="demoNoiseVal">600</span></label>
+                    <input type="range" id="demoNoise" min="0" max="1500" step="1" value="600">
+                </div>
+                <div class="demo-slider">
+                    <label>Mesafe <span id="demoDistanceVal">50</span> cm</label>
+                    <input type="range" id="demoDistance" min="0" max="200" step="1" value="50">
+                </div>
+            </div>
+        </div>
+
+        <!-- Genel Bakış: Konfor + Öneriler -->
+        <div id="genel-bakis">
+            <div class="top-row">
+
+                <!-- Konfor Skoru -->
+                <section class="card konfor-card">
+                    <p class="card-label">Konfor Skoru</p>
+                    <div class="konfor-inner">
+                        <div class="gauge-side">
+                            <div class="gauge-wrap">
+                                <svg class="gauge" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+                                    <path class="gauge-track" d="M10,110 A90,90 0 0 1 190,110"/>
+                                    <path class="gauge-fill" id="gaugeFill" d="M10,110 A90,90 0 0 1 190,110"/>
+                                </svg>
+                                <div class="gauge-value">
+                                    <span id="scoreValue">--</span>
+                                    <span class="gauge-unit">/ 100</span>
+                                </div>
+                            </div>
+                            <p class="gauge-status" id="statusLabel">Veri bekleniyor</p>
+                            <p class="session-total" id="sessionTotalText">Bugün: -- dk çalışma</p>
+                            <div class="feedback-row">
+                                <button class="feedback-btn positive" onclick="sendFeedback(true)">&#10003; Verimliyim</button>
+                                <button class="feedback-btn neutral"  onclick="sendFeedback(null)">&#8212; Normal</button>
+                                <button class="feedback-btn negative" onclick="sendFeedback(false)">&#10005; Rahatsızım</button>
+                            </div>
+                        </div>
+                        <div class="breakdown-side">
+                            <p class="breakdown-title">Skor Kırılımı</p>
+                            <div class="breakdown-item">
+                                <span class="bi-icon">&#127777;&#65039;</span>
+                                <span class="bi-name">Sıcaklık</span>
+                                <span class="bi-points" id="bp-temperature">--</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="bi-icon">&#128167;</span>
+                                <span class="bi-name">Nem</span>
+                                <span class="bi-points" id="bp-humidity">--</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="bi-icon">&#128161;</span>
+                                <span class="bi-name">Işık</span>
+                                <span class="bi-points" id="bp-light">--</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="bi-icon">&#128266;</span>
+                                <span class="bi-name">Gürültü</span>
+                                <span class="bi-points" id="bp-noise">--</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="bi-icon">&#127787;&#65039;</span>
+                                <span class="bi-name">Hava</span>
+                                <span class="bi-points" id="bp-airQuality">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Akıllı Öneriler -->
+                <section class="card" id="oneriler">
+                    <p class="card-label">Akıllı Öneriler</p>
+                    <div id="tipsList">
+                        <div class="tip-item">
+                            <span class="tip-level level-orta">ORTA</span>
+                            <span class="tip-text">Veri bekleniyor...</span>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+
+        <!-- Sensör Kartları -->
+        <div id="sensorler">
+            <div class="sensor-grid">
+
+                <!-- Sıcaklık -->
+                <section class="card metric-card">
+                    <div class="metric-head">
+                        <svg class="metric-icon" id="icon-temp" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+                        </svg>
+                        <span class="metric-label">Sıcaklık</span>
+                    </div>
+                    <div class="metric-status-big" id="tempTag">--</div>
+                    <div class="metric-value-wrap"><span id="tempValue">--</span><span class="metric-unit">°C</span></div>
+                    <p class="metric-tip" id="tempTip">—</p>
+                </section>
+
+                <!-- Nem -->
+                <section class="card metric-card">
+                    <div class="metric-head">
+                        <svg class="metric-icon" id="icon-humidity" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                        </svg>
+                        <span class="metric-label">Nem</span>
+                    </div>
+                    <div class="metric-status-big" id="humidityTag">--</div>
+                    <div class="metric-value-wrap"><span id="humidityValue">--</span><span class="metric-unit">%</span></div>
+                    <p class="metric-tip" id="humidityTip">—</p>
+                </section>
+
+                <!-- Işık -->
+                <section class="card metric-card">
+                    <div class="metric-head">
+                        <svg class="metric-icon" id="icon-light" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="5"/>
+                            <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                        <span class="metric-label">Işık</span>
+                    </div>
+                    <div class="metric-status-big" id="lightTag">--</div>
+                    <div class="metric-value-wrap"><span id="lightValue">--</span><span class="metric-unit">ham</span></div>
+                    <p class="metric-tip" id="lightTip">—</p>
+                </section>
+
+                <!-- Gürültü -->
+                <section class="card metric-card">
+                    <div class="metric-head">
+                        <svg class="metric-icon" id="icon-noise" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                        </svg>
+                        <span class="metric-label">Gürültü</span>
+                    </div>
+                    <div class="metric-status-big" id="noiseTag">--</div>
+                    <div class="metric-value-wrap"><span id="noiseValue">--</span><span class="metric-unit">ham</span></div>
+                    <p class="metric-tip" id="noiseTip">—</p>
+                </section>
+
+                <!-- Hava Kalitesi -->
+                <section class="card metric-card">
+                    <div class="metric-head">
+                        <svg class="metric-icon" id="icon-air" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9.59 4.59A2 2 0 1 1 11 8H2"/>
+                            <path d="M10.59 19.41A2 2 0 1 0 14 16H2"/>
+                            <path d="M15.73 7.73A2.5 2.5 0 1 1 19.5 12H2"/>
+                        </svg>
+                        <span class="metric-label">Hava Kalitesi</span>
+                    </div>
+                    <div class="metric-status-big" id="airTag">--</div>
+                    <div class="metric-value-wrap"><span id="airValue">--</span><span class="metric-unit">ham</span></div>
+                    <p class="metric-tip" id="airTip">—</p>
+                </section>
+
+                <!-- Kullanıcı Varlığı -->
+                <section class="card metric-card">
+                    <div class="metric-head">
+                        <svg class="metric-icon" id="icon-presence" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <span class="metric-label">Kullanıcı Varlığı</span>
+                    </div>
+                    <div class="metric-status-big" id="presenceTag">--</div>
+                    <div class="metric-value-wrap"><span id="distanceValue">--</span><span class="metric-unit">cm</span></div>
+                    <p class="metric-tip" id="presenceTip">—</p>
+                </section>
+
+            </div>
+        </div>
+
+        <!-- Alt satır: Sensör Durumu + Geçmiş -->
+        <div class="bottom-row" id="gecmis">
+
+            <!-- Sensör Durumu -->
+            <section class="card">
+                <p class="card-label">Sensör Durumu</p>
+                <div class="sensor-status-list">
+                    <div class="sensor-status-item">
+                        <span class="sensor-name">DHT22</span>
+                        <div class="sensor-indicator" id="status-dht22">
+                            <div class="sensor-dot passive"></div><span class="sensor-label-passive">Pasif</span>
+                        </div>
+                    </div>
+                    <div class="sensor-status-item">
+                        <span class="sensor-name">KY-018</span>
+                        <div class="sensor-indicator" id="status-ky018">
+                            <div class="sensor-dot passive"></div><span class="sensor-label-passive">Pasif</span>
+                        </div>
+                    </div>
+                    <div class="sensor-status-item">
+                        <span class="sensor-name">HW-484</span>
+                        <div class="sensor-indicator" id="status-hw484">
+                            <div class="sensor-dot passive"></div><span class="sensor-label-passive">Pasif</span>
+                        </div>
+                    </div>
+                    <div class="sensor-status-item">
+                        <span class="sensor-name">HC-SR04</span>
+                        <div class="sensor-indicator" id="status-hcsr04">
+                            <div class="sensor-dot passive"></div><span class="sensor-label-passive">Pasif</span>
+                        </div>
+                    </div>
+                    <div class="sensor-status-item">
+                        <span class="sensor-name">MQ-135</span>
+                        <div class="sensor-indicator" id="status-mq135">
+                            <div class="sensor-dot passive"></div><span class="sensor-label-passive">Pasif</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Geçmiş Grafik -->
+            <section class="card">
+                <div class="chart-card-inner">
+                    <div class="chart-head">
+                        <p class="card-label">Geçmiş Ölçümler</p>
+                        <div class="chart-tabs">
+                            <button data-key="temperature" class="active">Sıcaklık</button>
+                            <button data-key="humidity">Nem</button>
+                            <button data-key="airQuality">Hava Kalitesi</button>
+                            <button data-key="noise">Gürültü</button>
+                            <button data-key="light">Işık</button>
+                        </div>
+                    </div>
+                    <div class="chart-canvas-wrap">
+                        <canvas id="historyChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+    </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="feedbackModal">
+    <div class="modal-box">
+        <button class="modal-close" id="modalClose" aria-label="Kapat">&#10005;</button>
+        <p class="modal-question">Şu an çalışmaktan memnun musun?</p>
+        <div class="modal-actions">
+            <button class="feedback-btn positive" onclick="sendModalFeedback(true)">&#10003; Evet</button>
+            <button class="feedback-btn neutral"  onclick="sendModalFeedback(null)">&#8212; Normal</button>
+            <button class="feedback-btn negative" onclick="sendModalFeedback(false)">&#10005; Hayır</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="feedbackToast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+    const POLL_INTERVAL   = 5000;
+    const GAUGE_LENGTH    = 282.74;
+    const SENSOR_STALE_MS = 15000;
+
+    let historyChart;
+    let currentMetric  = 'temperature';
+    let currentProfile = null;
+    let lastReading    = null;
+
+    const STATUS_COLOR = { IDEAL: '#10B981', ORTA: '#F59E0B', DIKKAT: '#EF4444' };
+
+    const metricMeta = {
+        temperature: { label: 'Sıcaklık (°C)',      color: '#F59E0B' },
+        humidity:    { label: 'Nem (%)',             color: '#10B981' },
+        airQuality:  { label: 'Hava Kalitesi (ham)', color: '#EF4444' },
+        noise:       { label: 'Gürültü (ham)',       color: '#9ba3b0' },
+        light:       { label: 'Işık (ham)',          color: '#b0c4de' }
+    };
+
+    function statusDisplay(s) {
+        if (s === 'IDEAL')  return 'İDEAL';
+        if (s === 'ORTA')   return 'ORTA';
+        if (s === 'DIKKAT') return 'DİKKAT';
+        return '--';
+    }
+
+    function setMetricStatus(tagId, iconId, status) {
+        const tagEl  = document.getElementById(tagId);
+        const iconEl = document.getElementById(iconId);
+        const color  = STATUS_COLOR[status] || '#9ba3b0';
+        if (tagEl)  { tagEl.textContent = statusDisplay(status); tagEl.style.color = color; }
+        if (iconEl) { iconEl.style.color = color; }
+    }
+
+    function setConnection(ok) {
+        const dot  = document.getElementById('connectionDot');
+        const text = document.getElementById('connectionText');
+        dot.classList.toggle('offline', !ok);
+        text.textContent = ok ? 'Bağlı' : 'Bağlantı Yok';
+    }
+
+    function setGauge(score) {
+        const fill    = document.getElementById('gaugeFill');
+        const clamped = Math.max(0, Math.min(100, score));
+        fill.style.strokeDashoffset = GAUGE_LENGTH * (1 - clamped / 100);
+        fill.style.stroke = clamped >= 75 ? '#10B981' : clamped >= 50 ? '#F59E0B' : '#EF4444';
+    }
+
+    function statusText(s) {
+        if (s === 'IDEAL')    return 'İdeal çalışma ortamı';
+        if (s === 'ORTA')     return 'Kabul edilebilir, iyileştirme yapılabilir';
+        if (s === 'VERI_YOK') return 'Henüz veri yok';
+        return 'Ortam koşulları uygun değil';
+    }
+
+    /* ── Skor Kırılımı ──────────────────────────── */
+    function metricPoints(s) {
+        if (s === 'IDEAL') return 20;
+        if (s === 'ORTA')  return 12;
+        return 4;
+    }
+
+    function updateBreakdown(metrics) {
+        [['temperature','bp-temperature'],['humidity','bp-humidity'],
+         ['light','bp-light'],['noise','bp-noise'],['airQuality','bp-airQuality']
+        ].forEach(([key, id]) => {
+            const el  = document.getElementById(id);
+            const st  = metrics[key];
+            if (!el) return;
+            if (!st) { el.textContent = '--'; return; }
+            el.textContent = '+' + metricPoints(st);
+            el.className   = 'bi-points ' + (st === 'IDEAL' ? 'ideal' : st === 'ORTA' ? 'orta' : 'dikkat');
+        });
+    }
+
+    /* ── Sensör İpuçları ────────────────────────── */
+    function getSensorTip(key, status, r, p) {
+        if (!r || !p) return '—';
+        if (status === 'IDEAL') return 'Seviye ideal.';
+        if (key === 'temperature')
+            return r.temperature > (p.idealTempMax || 24) ? 'Biraz yüksek, havalandırma önerilir.' : 'Ortam serin, ısıtmayı düşünün.';
+        if (key === 'humidity')
+            return r.humidity < (p.idealHumidityMin || 40) ? 'Hava kuru, nem artırmanız önerilir.' : 'Nem yüksek, havalandırma açın.';
+        if (key === 'light')
+            return r.light < (p.idealLightMin || 800) ? 'Işık seviyesi düşük, masa lambası açın.' : status === 'DIKKAT' ? 'Işık fazla, göz yorgunluğuna dikkat.' : 'Kabul edilebilir ışık seviyesi.';
+        if (key === 'noise')
+            return status === 'DIKKAT' ? 'Ortam gürültülü, konsantrasyon bozulabilir.' : 'Gürültü biraz yüksek.';
+        if (key === 'airQuality')
+            return status === 'DIKKAT' ? 'Hava kalitesi düşük, pencere açın.' : 'Hava kalitesi kabul edilebilir.';
+        return status === 'DIKKAT' ? 'Dikkat, seviye uygun değil.' : 'Kabul edilebilir.';
+    }
+
+    function updateSensorTips(r, c, p) {
+        [['temperature','tempTip',c.metrics.temperature],
+         ['humidity','humidityTip',c.metrics.humidity],
+         ['light','lightTip',c.metrics.light],
+         ['noise','noiseTip',c.metrics.noise],
+         ['airQuality','airTip',c.metrics.airQuality]
+        ].forEach(([key, tipId, st]) => {
+            const el = document.getElementById(tipId);
+            if (el) el.textContent = getSensorTip(key, st, r, p);
+        });
+    }
+
+    /* ── Kullanıcı Varlığı ──────────────────────── */
+    const PRESENCE_META = {
+        MASADA:    { color: '#10B981', label: 'MASADA',      tip: m => `Oturum süresi: ${m} dk` },
+        KISA_MOLA: { color: '#F59E0B', label: 'KISA MOLA',    tip: () => 'Sistem bekliyor' },
+        UZAK:      { color: '#EF4444', label: 'MASADA DEĞİL', tip: () => 'Kullanıcı 15 dk+ yok' }
+    };
+
+    function updatePresenceCard(data) {
+        const state = data.presenceState || 'UZAK';
+        const meta  = PRESENCE_META[state] || PRESENCE_META.UZAK;
+        const tagEl  = document.getElementById('presenceTag');
+        const iconEl = document.getElementById('icon-presence');
+        const tipEl  = document.getElementById('presenceTip');
+        if (tagEl)  { tagEl.textContent = meta.label; tagEl.style.color = meta.color; }
+        if (iconEl) { iconEl.style.color = meta.color; }
+        if (tipEl)  tipEl.textContent = meta.tip(data.currentSessionMinutes || 0);
+
+        document.getElementById('mainContent').classList.toggle('session-paused', state === 'UZAK');
+
+        const totalToday = (data.totalSessionMinutes || 0) + (data.currentSessionMinutes || 0);
+        document.getElementById('sessionTotalText').textContent = `Bugün: ${totalToday} dk çalışma`;
+    }
+
+    /* ── Akıllı Öneriler ────────────────────────── */
+    function tipIconSvg(level) {
+        const c   = STATUS_COLOR[level] || '#9ba3b0';
+        const att = `width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"`;
+        if (level === 'IDEAL')
+            return `<svg ${att}><polyline points="20 6 9 17 4 12"/></svg>`;
+        if (level === 'ORTA')
+            return `<svg ${att}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+        return `<svg ${att}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+    }
+
+    function computeTips(r, p, shouldSuggestBreak) {
+        if (!r || !p) return [{ level: 'ORTA', text: 'Veri bekleniyor...' }];
+
+        const tips = [];
+        if (shouldSuggestBreak) {
+            tips.push({ level: 'DIKKAT', text: '45 dakikadır aralıksız çalışıyorsun. Kısa bir mola gözlerine ve konsantrasyonuna iyi gelir.' });
+        }
+
+        const idealTempMin       = p.idealTempMin       || 20;
+        const idealTempMax       = p.idealTempMax       || 24;
+        const idealHumidityMin   = p.idealHumidityMin   || 40;
+        const idealHumidityMax   = p.idealHumidityMax   || 60;
+        const idealLightMin      = p.idealLightMin      || 800;
+        const idealNoiseMax      = p.idealNoiseMax      || 1800;
+        const idealAirQualityMax = p.idealAirQualityMax || 2000;
+
+        const HAVA  = r.airQuality  != null && r.airQuality > idealAirQualityMax;
+        const SICAK = r.temperature != null && (r.temperature < idealTempMin || r.temperature > idealTempMax);
+        const ISIK  = r.light       != null && r.light < idealLightMin;
+        const SES   = r.noise       != null && r.noise > idealNoiseMax;
+
+        if (HAVA && SICAK) {
+            tips.push({ level: 'DIKKAT', text: 'Pencereyi 10 dakika açın. Bu hem hava kalitesini iyileştirecek hem de ortamı serinletecek.' });
+        } else {
+            if (HAVA) {
+                tips.push({ level: 'DIKKAT', text: 'Hava kalitesi düştü. Kısa bir havalandırma önerilir.' });
+            }
+            if (SICAK && r.temperature > idealTempMax + 2) {
+                tips.push({ level: 'DIKKAT', text: 'Sıcaklık konfor eşiğinin üzerinde. Hafif bir havalandırma veya klima ayarı yapın.' });
+            }
+            if (SICAK && r.temperature < idealTempMin) {
+                tips.push({ level: 'DIKKAT', text: 'Ortam soğuk. Isıtıcıyı açmayı düşünün.' });
+            }
+        }
+
+        if (r.humidity != null && r.humidity < idealHumidityMin) {
+            tips.push({ level: 'ORTA', text: 'Hava kuru. Bir bardak su içtiğinizden emin olun.' });
+        }
+        if (r.humidity != null && r.humidity > idealHumidityMax) {
+            tips.push({ level: 'ORTA', text: 'Nem yüksek. Havalandırma yapın.' });
+        }
+
+        if (ISIK) {
+            const hour = new Date().getHours();
+            tips.push({
+                level: 'DIKKAT',
+                text: hour >= 18
+                    ? 'Akşam saatlerinde doğal ışık azaldı. Masa lambasını açın.'
+                    : 'Mevcut ışık seviyesi düşük. Perdeyi açın veya lamba kullanın.'
+            });
+        }
+
+        if (SES) {
+            tips.push({ level: 'DIKKAT', text: 'Ortam gürültüsü yüksek. Kulaklık kullanmayı düşünün.' });
+        }
+
+        if (!tips.length) {
+            const idealMessages = [
+                'Ortam ideal. Verimli çalışmaya devam!',
+                'Çevre koşulları sana uygun. Odaklanmanın tam zamanı.',
+                'Tüm göstergeler yeşil. İyi çalışmalar!'
+            ];
+            tips.push({ level: 'IDEAL', text: idealMessages[Math.floor(Math.random() * idealMessages.length)] });
+        }
+
+        const priority = { DIKKAT: 0, ORTA: 1, IDEAL: 2 };
+        tips.sort((a, b) => priority[a.level] - priority[b.level]);
+        return tips.slice(0, 3);
+    }
+
+    function renderTips(tips) {
+        const el = document.getElementById('tipsList');
+        if (!el) return;
+        el.innerHTML = tips.map(t => {
+            const cls = t.level === 'IDEAL' ? 'level-ideal' : t.level === 'ORTA' ? 'level-orta' : 'level-dikkat';
+            return `<div class="tip-item">${tipIconSvg(t.level)}<span class="tip-level ${cls}">${t.level}</span><span class="tip-text">${t.text}</span></div>`;
+        }).join('');
+    }
+
+    /* ── Sensör Durumu ──────────────────────────── */
+    function setSensorStatus(id, active) {
+        const el = document.getElementById('status-' + id);
+        if (!el) return;
+        el.innerHTML = `<div class="sensor-dot ${active ? 'active' : 'passive'}"></div>`
+                     + `<span class="${active ? 'sensor-label-active' : 'sensor-label-passive'}">${active ? 'Aktif' : 'Pasif'}</span>`;
+    }
+
+    function updateSensorStatus(r) {
+        if (!r || !r.timestamp) {
+            ['dht22','ky018','hw484','hcsr04','mq135'].forEach(id => setSensorStatus(id, false));
+            return;
+        }
+        const fresh = (Date.now() - new Date(r.timestamp).getTime()) < SENSOR_STALE_MS;
+        setSensorStatus('dht22',  fresh && (r.temperature != null || r.humidity != null));
+        setSensorStatus('ky018',  fresh && r.light      != null);
+        setSensorStatus('hw484',  fresh && r.noise      != null);
+        setSensorStatus('hcsr04', fresh && r.distance   != null);
+        setSensorStatus('mq135',  fresh && r.airQuality != null);
+    }
+
+    /* ── API ────────────────────────────────────── */
+    async function fetchLatest() {
+        try {
+            const res  = await fetch('/api/sensor/latest');
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            lastReading = data.reading;
+            updateUI(data);
+            setConnection(true);
+        } catch { setConnection(false); }
+    }
+
+    async function fetchProfile() {
+        try {
+            const res = await fetch('/api/profile');
+            if (!res.ok) return;
+            currentProfile = await res.json();
+        } catch { /* sessiz geç */ }
+    }
+
+    function updateUI(data) {
+        const r = data.reading;
+        const c = data.comfort;
+        if (!r) return;
+
+        document.getElementById('tempValue').textContent     = r.temperature != null ? r.temperature.toFixed(1) : '--';
+        document.getElementById('humidityValue').textContent = r.humidity    != null ? r.humidity.toFixed(0)    : '--';
+        document.getElementById('airValue').textContent      = r.airQuality  != null ? r.airQuality             : '--';
+        document.getElementById('noiseValue').textContent    = r.noise       != null ? r.noise                  : '--';
+        document.getElementById('lightValue').textContent    = r.light       != null ? r.light                  : '--';
+        document.getElementById('distanceValue').textContent = r.distance    != null ? r.distance.toFixed(0)    : '--';
+
+        setMetricStatus('tempTag',     'icon-temp',     c.metrics.temperature);
+        setMetricStatus('humidityTag', 'icon-humidity', c.metrics.humidity);
+        setMetricStatus('airTag',      'icon-air',      c.metrics.airQuality);
+        setMetricStatus('noiseTag',    'icon-noise',    c.metrics.noise);
+        setMetricStatus('lightTag',    'icon-light',    c.metrics.light);
+
+        updatePresenceCard(data);
+
+        document.getElementById('scoreValue').textContent  = c.score;
+        document.getElementById('statusLabel').textContent = statusText(c.status);
+        setGauge(c.score);
+
+        if (r.timestamp)
+            document.getElementById('updateTimeDisplay').textContent =
+                'Son güncelleme: ' + new Date(r.timestamp).toLocaleTimeString('tr-TR');
+
+        updateBreakdown(c.metrics);
+        updateSensorStatus(r);
+
+        if (currentProfile) {
+            updateSensorTips(r, c, currentProfile);
+            renderTips(computeTips(r, currentProfile, data.shouldSuggestBreak));
+        }
+    }
+
+    async function fetchHistory(metric) {
+        try {
+            const res  = await fetch('/api/sensor/history?limit=30');
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            const labels = data.map(r => new Date(r.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }));
+            const values = data.map(r => r[metric]);
+            const meta   = metricMeta[metric];
+
+            if (!historyChart) {
+                const ctx = document.getElementById('historyChart').getContext('2d');
+                historyChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels, datasets: [{ label: meta.label, data: values, borderColor: meta.color, backgroundColor: meta.color + '33', tension: 0.35, fill: true, pointRadius: 0 }] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        layout: { padding: { left: 8, right: 8 } },
+                        scales: {
+                            x: {
+                                ticks: { color: '#9ba3b0', font: { size: 10 }, maxTicksLimit: 8, maxRotation: 45, minRotation: 45 },
+                                grid: { color: '#222538' }
+                            },
+                            y: {
+                                ticks: { color: '#9ba3b0', font: { size: 9 }, padding: 6 },
+                                grid: { color: '#222538' },
+                                afterFit(scale) { scale.width = Math.max(scale.width, 55); }
+                            }
+                        }
+                    }
+                });
+            } else {
+                historyChart.data.labels                       = labels;
+                historyChart.data.datasets[0].data            = values;
+                historyChart.data.datasets[0].label           = meta.label;
+                historyChart.data.datasets[0].borderColor     = meta.color;
+                historyChart.data.datasets[0].backgroundColor = meta.color + '33';
+                historyChart.update();
+            }
+        } catch (e) { console.error('Grafik yüklenemedi:', e); }
+    }
+
+    document.querySelectorAll('.chart-tabs button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.chart-tabs button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentMetric = btn.dataset.key;
+            fetchHistory(currentMetric);
+        });
+    });
+
+    /* ── Başlangıç ──────────────────────────────── */
+    fetchProfile().then(() => { fetchLatest(); fetchHistory(currentMetric); });
+    setInterval(fetchLatest, POLL_INTERVAL);
+    setInterval(() => fetchHistory(currentMetric), POLL_INTERVAL);
+    setInterval(fetchProfile, 30000);
+
+    /* ── Geri Bildirim ──────────────────────────── */
+    async function sendFeedback(isPositive) {
+        try {
+            const res = await fetch('/api/sensor/feedback', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isPositive })
+            });
+            if (!res.ok) throw new Error();
+            showToast('Teşekkürler, geri bildirim alındı ✓');
+        } catch { showToast('Bir hata oluştu, tekrar deneyin'); }
+    }
+
+    let toastTimer;
+    function showToast(msg) {
+        const t = document.getElementById('feedbackToast');
+        t.textContent = msg; t.classList.add('visible');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => t.classList.remove('visible'), 2500);
+    }
+
+    /* ── Demo Modu ──────────────────────────────── */
+    let demoMode = false;
+    const demoState = { temperature: 24, light: 1500, noise: 600, distance: 50 };
+    let demoDebounceTimer;
+
+    function pushDemoState() {
+        fetch('/api/sensor/demo', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ active: demoMode, ...demoState })
+        }).then(fetchLatest).catch(() => {});
+    }
+
+    function toggleDemoMode() {
+        demoMode = !demoMode;
+        document.getElementById('demoToggleBtn').classList.toggle('active', demoMode);
+        document.getElementById('demoPanel').classList.toggle('visible', demoMode);
+        pushDemoState();
+    }
+
+    function bindDemoSlider(inputId, key, valueId, formatter) {
+        const input = document.getElementById(inputId);
+        const out   = document.getElementById(valueId);
+        input.addEventListener('input', () => {
+            const v = parseFloat(input.value);
+            demoState[key] = v;
+            out.textContent = formatter ? formatter(v) : v;
+            clearTimeout(demoDebounceTimer);
+            demoDebounceTimer = setTimeout(pushDemoState, 80);
+        });
+    }
+
+    bindDemoSlider('demoTemp',  'temperature', 'demoTempVal',  v => v.toFixed(1));
+    bindDemoSlider('demoLight', 'light',       'demoLightVal');
+    bindDemoSlider('demoNoise',    'noise',    'demoNoiseVal');
+    bindDemoSlider('demoDistance', 'distance', 'demoDistanceVal');
+
+    /* ── Periyodik Modal ────────────────────────── */
+    const modalOverlay = document.getElementById('feedbackModal');
+    function openFeedbackModal()  { modalOverlay.classList.add('visible'); }
+    function closeFeedbackModal() { modalOverlay.classList.remove('visible'); }
+    document.getElementById('modalClose').addEventListener('click', closeFeedbackModal);
+    modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeFeedbackModal(); });
+    async function sendModalFeedback(v) { closeFeedbackModal(); await sendFeedback(v); }
+    setInterval(openFeedbackModal, 600000);
+</script>
+</body>
+</html>
