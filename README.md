@@ -1,6 +1,25 @@
-# Akıllı Çalışma Masası - Dashboard
+# Smart Desk: IoT-Based Personalized Comfort Monitoring System 🖥️
 
 Spring Boot 4 (Java 21) + Thymeleaf + MySQL ile hazırlanmış IoT dashboard projesi.
+
+Sistem, 5 sensörden gerçek zamanlı ortam verisi toplar ve kullanıcının geri bildirimlerinden **kişiselleştirilmiş konfor profili öğrenir.**
+
+## Kişiselleştirme Algoritması
+
+- Her **5 saniyede bir** 5 sensörden veri toplanır (720 ölçüm/saat)
+- **5+ geri bildirim** sonrası konfor profili otomatik güncellenir
+- Her metrik için ideal aralık **ortalama ± standart sapma** yöntemiyle hesaplanır
+- Koşullar öğrenilen profilden saptığında akıllı öneriler üretilir
+- **HC-SR04** ultrasonik sensör kullanıcı varlığını 50cm hassasiyetle tespit eder
+
+## Tamamlanan Özellikler
+
+- [x] ESP32 sensör entegrasyonu (REST API)
+- [x] Gerçek zamanlı konfor skoru (0–100)
+- [x] Kullanıcı geri bildirimi toplama
+- [x] Kişiselleştirilmiş profil öğrenimi (ortalama ± std)
+- [x] Kullanıcı varlığı tespiti (HC-SR04)
+- [x] Web dashboard (Chart.js ile gerçek zamanlı grafikler)
 
 ## Gereksinimler
 
@@ -55,7 +74,7 @@ eklenir, böylece dashboard'u ESP32 bağlamadan da test edebilirsin.
 
 ## ESP32 Entegrasyonu
 
-ESP32, ölçümleri şu adrese **POST** isteğiyle JSON olarak göndermeli:
+Arduino kodu `arduino/IoT_Proje.ino` dosyasında mevcut. ESP32, ölçümleri şu adrese **POST** isteğiyle JSON olarak göndermeli:
 
 ```
 POST http://<bilgisayar-ip>:8080/api/sensor
@@ -66,6 +85,7 @@ Content-Type: application/json
   "humidity": 45.0,
   "airQuality": 1450,
   "noise": 1200,
+  "light": 2100,
   "distance": 55.0
 }
 ```
@@ -83,28 +103,35 @@ MySQL Workbench veya benzer bir araçla `smartdesk` veritabanına bağlanıp
 ## Proje Yapısı
 
 ```
+arduino/
+└── IoT_Proje.ino                → ESP32 sensör kodu (C++)
+
 src/main/java/com/smartdesk/
-├── SmartDeskApplication.java   → Ana sınıf + örnek veri ekleme
+├── SmartDeskApplication.java    → Ana sınıf + örnek veri ekleme
 ├── controller/
 │   ├── SensorApiController.java → /api/sensor endpoint'leri (ESP32 + dashboard)
 │   └── DashboardController.java → Ana sayfa
 ├── model/
-│   └── SensorReading.java       → Veritabanı tablosu (sensör kaydı)
+│   ├── SensorReading.java       → Sensör verisi entity
+│   ├── FeedbackEntry.java       → Kullanıcı geri bildirimi entity
+│   └── UserProfile.java         → Öğrenilen konfor profili entity
 ├── repository/
-│   └── SensorReadingRepository.java
+│   ├── SensorReadingRepository.java
+│   ├── FeedbackEntryRepository.java
+│   └── UserProfileRepository.java
 └── service/
-    └── ComfortService.java      → Konfor skoru hesaplama (kural tabanlı)
+    ├── ComfortService.java      → Konfor skoru hesaplama
+    ├── ProfileService.java      → Kişiselleştirme algoritması (ortalama ± std)
+    └── PresenceService.java     → Kullanıcı varlığı tespiti
 
 src/main/resources/
-├── application.properties       → H2 veritabanı ayarları
+├── application.properties       → Veritabanı ayarları
 └── templates/
-    └── dashboard.html            → Dashboard arayüzü (Thymeleaf + Chart.js)
+    └── dashboard.html           → Dashboard arayüzü (Thymeleaf + Chart.js)
 ```
 
-## Sonraki Adımlar
+## Gelecek Çalışmalar
 
-- [ ] ESP32 kodunu yaz, `/api/sensor` endpoint'ine POST gönder
-- [ ] Kullanıcı kaydı + onboarding anketi
-- [ ] Geri bildirim ekranı ("şu an verimli misin?")
-- [ ] `ComfortService`'teki sabit eşikleri, kullanıcının geri bildirimlerinden
-      öğrenilen kişisel "ideal profil" ile değiştir
+- [ ] Mobil uygulama entegrasyonu
+- [ ] Çok kullanıcılı profil desteği
+- [ ] Kötü koşullar için bildirim sistemi
